@@ -14,6 +14,9 @@ from flask_wtf import Form
 from forms import *
 from flask_migrate import Migrate
 import sys
+from datetime import datetime
+from sqlalchemy.orm import backref
+
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -48,6 +51,8 @@ class Venue(db.Model):
     seeking_talent = db.Column(db.Boolean)
     seeking_description = db.Column(db.String())
 
+    #artists = db.relationship("Artist", secondary="Show")
+
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
 
@@ -67,28 +72,27 @@ class Artist(db.Model):
     seeking_description = db.Column(db.String())
     website = db.Column(db.String(120))
 
+    #venues = db.relationship("Venue", secondary="Show")
+
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
+    # done expet genres
 
 # TODO Implement Show and Artist models, and complete all model relationships and properties, #
 # as a database migration.
 
 
-# Show = db.Table('Show',
-#                db.Column('venue_id', db.Integer, db.ForeignKey('Venue.id'), primary_key=True),
-#                db.Column('artist_id', db.Integer, db.ForeignKey('Artist.id'), primary_key=True),
-#                db.Column('start_time', db.DateTime, primary_key=True)
-# )
+class Show(db.Model):
+    __tablename__ = 'Show'
+    id = db.Column(db.Integer, primary_key=True)
+    venue_id = db.Column(db.Integer, db.ForeignKey('Venue.id'), nullable=False)
+    artist_id = db.Column(db.Integer, db.ForeignKey(
+        'Artist.id'), nullable=False)
+    start_time = db.Column(db.DateTime, default=datetime.utcnow())
 
-
-# class Show(db.Model):
-#    __tablename__ = 'Show'
-
-#    venue_id = db.Column(db.Integer, db.ForeignKey(
-#        'Venue.id'), primary_key=True, nullable=False)
-#    artist_id = db.Column(db.Integer, db.ForeignKey(
-#        'Artist.id'), primary_key=True, nullable=False)
-#    start_time = db.Column(db.DateTime, primary_key=True)
-
+    artist = db.relationship(Artist, backref=backref(
+        "Show", cascade="all, delete-orphan"))
+    venue = db.relationship(Venue, backref=backref(
+        "Show", cascade="all, delete-orphan"))
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -258,7 +262,7 @@ def show_venue(venue_id):
         "past_shows_count": 1,
         "upcoming_shows_count": 1,
     }
-    #data = list(filter(lambda d: d['id'] == venue_id, [data1, data2, data3]))[0]
+    # data = list(filter(lambda d: d['id'] == venue_id, [data1, data2, data3]))[0]
     data = Venue.query.get(venue_id)
     return render_template('pages/show_venue.html', venue=data)
 
@@ -385,8 +389,8 @@ def show_artist(artist_id):
         "upcoming_shows_count": 3,
     }
     artist = Artist.query.get(artist_id)
-    #artist = Artist.query.first()
-    #data = list(filter(lambda d: d['id'] ==artist_id, allData))[0]
+    # artist = Artist.query.first()
+    # data = list(filter(lambda d: d['id'] ==artist_id, allData))[0]
     return render_template('pages/show_artist.html', artist=artist)
 
 #  Update
@@ -398,7 +402,7 @@ def edit_artist(artist_id):
     form = ArtistForm()
     artist = Artist.query.get(artist_id)
     # TODO: populate form with fields from artist with ID <artist_id>
-    #done in view
+    # done in view
     return render_template('forms/edit_artist.html', form=form, artist=artist)
 
 
