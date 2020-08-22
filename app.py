@@ -115,6 +115,7 @@ def index():
 def venues():
     # TODO: replace with real venues data.
     #       num_shows should be aggregated based on number of upcoming shows per venue.
+
     data = [{
         "city": "San Francisco",
         "state": "CA",
@@ -136,7 +137,20 @@ def venues():
             "num_upcoming_shows": 0,
         }]
     }]
-    return render_template('pages/venues.html', areas=data)
+
+    areas = Venue.query.with_entities(Venue.city, Venue.state).distinct()
+    venues = Venue.query.all()
+    aAndv = {}
+    listOfAreasOfVenues = []
+    for a in areas:
+        aAndv = {
+            'city': a.city,
+            'state': a.state,
+            'venues': Venue.query.filter_by(city=a.city, state=a.state).all()
+        }
+        listOfAreasOfVenues.append(aAndv.copy())
+
+    return render_template('pages/venues.html', areas=listOfAreasOfVenues)
 
 
 @app.route('/venues/search', methods=['POST'])
@@ -144,15 +158,15 @@ def search_venues():
     # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
     # seach for Hop should return "The Musical Hop".
     # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
-    response = {
-        "count": 1,
-        "data": [{
-            "id": 2,
-            "name": "The Dueling Pianos Bar",
-            "num_upcoming_shows": 0,
-        }]
+
+    word = request.form.get('search_term', '')
+    data = Venue.query.filter(Venue.name.ilike(f"%{word}%"))
+    count = data.count()
+    res = {
+        "count": count,
+        "data": data.all()
     }
-    return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
+    return render_template('pages/search_venues.html', results=res, search_term=request.form.get('search_term', ''))
 
 
 @app.route('/venues/<int:venue_id>')
@@ -236,8 +250,8 @@ def show_venue(venue_id):
         "past_shows_count": 1,
         "upcoming_shows_count": 1,
     }
-    data = list(filter(lambda d: d['id'] ==
-                       venue_id, [data1, data2, data3]))[0]
+    #data = list(filter(lambda d: d['id'] == venue_id, [data1, data2, data3]))[0]
+    data = Venue.query.get(venue_id)
     return render_template('pages/show_venue.html', venue=data)
 
 #  Create Venue
@@ -254,13 +268,40 @@ def create_venue_form():
 def create_venue_submission():
     # TODO: insert form data as a new Venue record in the db, instead
     # TODO: modify data to be the data object returned from db insertion
+    form = VenueForm(request.form)
+    if not form.validate_on_submit():
+        return render_template('forms/new_venue.html', form=form)
+    error = False
+    body = {}
+    try:
+        venue = Venue(
+            name=request.form['name'], city=request.form['city'], state=request.form['state'],
+            image_link=request.form['image_link'],
+            phone=request.form['phone'], address=request.form['address'],
+            # , genres=request.form['genres']
+            facebook_link=request.form['facebook_link']
+        )
 
-    # on successful db insert, flash success
-    flash('Venue ' + request.form['name'] + ' was successfully listed!')
-    # TODO: on unsuccessful db insert, flash an error instead.
-    # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
-    # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
-    return render_template('pages/home.html')
+        db.session.add(venue)
+        db.session.commit()
+
+        # on successful db insert, flash success
+        flash('Venue ' + request.form['name'] + ' was successfully listed!')
+    except:
+        error = True
+        db.session.rollback()
+        print(sys.exc_info())
+        # TODO: on unsuccessful db insert, flash an error instead.
+        flash('An error occurred. Venue ' +
+              request.form['name'] + ' could not be listed.')
+    finally:
+        db.session.close()
+    if error:
+        abort(400)
+
+    else:
+        # return jsonify(body)
+        return render_template('pages/home.html')
 
 
 @app.route('/venues/<venue_id>', methods=['DELETE'])
@@ -290,15 +331,15 @@ def search_artists():
     # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
     # seach for "A" should return "Guns N Petals", "Matt Quevado", and "The Wild Sax Band".
     # search for "band" should return "The Wild Sax Band".
-    response = {
-        "count": 1,
-        "data": [{
-            "id": 4,
-            "name": "Guns N Petals",
-            "num_upcoming_shows": 0,
-        }]
+    # done
+    word = request.form.get('search_term', '')
+    data = Artist.query.filter(Artist.name.ilike(f"%{word}%"))
+    count = data.count()
+    res = {
+        "count": count,
+        "data": data.all()
     }
-    return render_template('pages/search_artists.html', results=response, search_term=request.form.get('search_term', ''))
+    return render_template('pages/search_artists.html', results=res, search_term=request.form.get('search_term', ''))
 
 
 @app.route('/artists/<int:artist_id>')

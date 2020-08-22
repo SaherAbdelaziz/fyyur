@@ -1,7 +1,8 @@
 {% extends 'layouts/main.html' %} {% block title %}New Venue{% endblock %} {%
 block content %}
 <div class="form-wrapper">
-  <form method="post" class="form">
+  <form method="post" class="form" action="/venues/create">
+    {{ form.hidden_tag() }}
     <h3 class="form-heading">
       List a new venue
       <a href="{{ url_for('index') }}" title="Back to homepage"
@@ -35,6 +36,11 @@ block content %}
       autofocus = true) }}
     </div>
     <div class="form-group">
+      <label for="genres">Image Link</label>
+      {{ form.image_link(class_ = 'form-control', placeholder='http://',
+      autofocus = true) }}
+    </div>
+    <div class="form-group">
       <label for="genres">Genres</label>
       <small>Ctrl+Click to select multiple</small>
       {{ form.genres(class_ = 'form-control', placeholder='Genres, separated by
@@ -44,6 +50,11 @@ block content %}
       <label for="facebook_link">Facebook Link</label>
       {{ form.facebook_link(class_ = 'form-control', placeholder='http://',
       autofocus = true) }}
+    </div>
+    <div class="form-group">
+      {% if form.errors %}
+      <label for="errors">{{ form.errors }}</label>
+      {% endif %}
     </div>
     <input
       type="submit"
