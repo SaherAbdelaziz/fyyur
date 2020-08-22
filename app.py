@@ -5,7 +5,7 @@
 import json
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for
+from flask import Flask, render_template, request, Response, flash, redirect, url_for, jsonify, abort
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 import logging
@@ -13,7 +13,7 @@ from logging import Formatter, FileHandler
 from flask_wtf import Form
 from forms import *
 from flask_migrate import Migrate
-
+import sys
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -61,7 +61,26 @@ class Artist(db.Model):
 
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
-# TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
+# TODO Implement Show and Artist models, and complete all model relationships and properties, #
+# as a database migration.
+
+
+# Show = db.Table('Show',
+#                db.Column('venue_id', db.Integer, db.ForeignKey('Venue.id'), primary_key=True),
+#                db.Column('artist_id', db.Integer, db.ForeignKey('Artist.id'), primary_key=True),
+#                db.Column('start_time', db.DateTime, primary_key=True)
+# )
+
+
+# class Show(db.Model):
+#    __tablename__ = 'Show'
+
+#    venue_id = db.Column(db.Integer, db.ForeignKey(
+#        'Venue.id'), primary_key=True, nullable=False)
+#    artist_id = db.Column(db.Integer, db.ForeignKey(
+#        'Artist.id'), primary_key=True, nullable=False)
+#    start_time = db.Column(db.DateTime, primary_key=True)
+
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -260,6 +279,8 @@ def delete_venue(venue_id):
 @app.route('/artists')
 def artists():
     # TODO: replace with real data returned from querying the database
+    # done
+    '''
     data = [{
         "id": 4,
         "name": "Guns N Petals",
@@ -270,6 +291,8 @@ def artists():
         "id": 6,
         "name": "The Wild Sax Band",
     }]
+    '''
+    data = Artist.query.all()
     return render_template('pages/artists.html', artists=data)
 
 
@@ -293,48 +316,7 @@ def search_artists():
 def show_artist(artist_id):
     # shows the venue page with the given venue_id
     # TODO: replace with real venue data from the venues table, using venue_id
-    data1 = {
-        "id": 4,
-        "name": "Guns N Petals",
-        "genres": ["Rock n Roll"],
-        "city": "San Francisco",
-        "state": "CA",
-        "phone": "326-123-5000",
-        "website": "https://www.gunsnpetalsband.com",
-        "facebook_link": "https://www.facebook.com/GunsNPetals",
-        "seeking_venue": True,
-        "seeking_description": "Looking for shows to perform at in the San Francisco Bay Area!",
-        "image_link": "https://images.unsplash.com/photo-1549213783-8284d0336c4f?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=300&q=80",
-        "past_shows": [{
-            "venue_id": 1,
-            "venue_name": "The Musical Hop",
-            "venue_image_link": "https://images.unsplash.com/photo-1543900694-133f37abaaa5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=400&q=60",
-            "start_time": "2019-05-21T21:30:00.000Z"
-        }],
-        "upcoming_shows": [],
-        "past_shows_count": 1,
-        "upcoming_shows_count": 0,
-    }
-    data2 = {
-        "id": 5,
-        "name": "Matt Quevedo",
-        "genres": ["Jazz"],
-        "city": "New York",
-        "state": "NY",
-        "phone": "300-400-5000",
-        "facebook_link": "https://www.facebook.com/mattquevedo923251523",
-        "seeking_venue": False,
-        "image_link": "https://images.unsplash.com/photo-1495223153807-b916f75de8c5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=334&q=80",
-        "past_shows": [{
-            "venue_id": 3,
-            "venue_name": "Park Square Live Music & Coffee",
-            "venue_image_link": "https://images.unsplash.com/photo-1485686531765-ba63b07845a7?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=747&q=80",
-            "start_time": "2019-06-15T23:00:00.000Z"
-        }],
-        "upcoming_shows": [],
-        "past_shows_count": 1,
-        "upcoming_shows_count": 0,
-    }
+
     data3 = {
         "id": 6,
         "name": "The Wild Sax Band",
@@ -364,9 +346,10 @@ def show_artist(artist_id):
         "past_shows_count": 0,
         "upcoming_shows_count": 3,
     }
-    data = list(filter(lambda d: d['id'] ==
-                       artist_id, [data1, data2, data3]))[0]
-    return render_template('pages/show_artist.html', artist=data)
+    artist = Artist.query.get(artist_id)
+    #artist = Artist.query.first()
+    #data = list(filter(lambda d: d['id'] ==artist_id, allData))[0]
+    return render_template('pages/show_artist.html', artist=artist)
 
 #  Update
 #  ----------------------------------------------------------------
@@ -442,12 +425,39 @@ def create_artist_submission():
     # called upon submitting the new artist listing form
     # TODO: insert form data as a new Venue record in the db, instead
     # TODO: modify data to be the data object returned from db insertion
+    form = ArtistForm(request.form)
+    if not form.validate_on_submit():
+        return render_template('forms/new_artist.html', form=form)
+    error = False
+    body = {}
+    try:
+        artist = Artist(
+            name=request.form['name'], city=request.form['city'], state=request.form['state'],
+            image_link=request.form['image_link'],
+            phone=request.form['phone'], genres=request.form['genres'],
+            facebook_link=request.form['facebook_link']
+        )
 
-    # on successful db insert, flash success
-    flash('Artist ' + request.form['name'] + ' was successfully listed!')
-    # TODO: on unsuccessful db insert, flash an error instead.
-    # e.g., flash('An error occurred. Artist ' + data.name + ' could not be listed.')
-    return render_template('pages/home.html')
+        db.session.add(artist)
+        db.session.commit()
+
+        # on successful db insert, flash success
+        flash('Artist ' + request.form['name'] + ' was successfully listed!')
+    except:
+        error = True
+        db.session.rollback()
+        print(sys.exc_info())
+        # TODO: on unsuccessful db insert, flash an error instead.
+        flash('An error occurred. Artist ' +
+              request.form['name'] + ' could not be listed.')
+    finally:
+        db.session.close()
+    if error:
+        abort(400)
+
+    else:
+        # return jsonify(body)
+        return render_template('pages/home.html')
 
 
 #  Shows
