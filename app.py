@@ -171,26 +171,29 @@ def search_venues():
 def show_venue(venue_id):
     # shows the venue page with the given venue_id
     # TODO: replace with real venue data from the venues table, using venue_id
-    dateTimeNow = datetime.now()
+    # done
 
-    venueShowsList = db.session.query(Venue, Show).outerjoin(
+    venueAndShowsList = db.session.query(Venue, Show).outerjoin(
         Show, Venue.id == Show.venue_id).filter(Venue.id == venue_id).all()
 
-    venue = venueShowsList[0].Venue
+    venue = venueAndShowsList[0].Venue
 
     venue.upcoming_shows_count = 0
-    venue.upcoming_shows = []
     venue.past_shows_count = 0
+
+    venue.upcoming_shows = []
     venue.past_shows = []
 
-    for i in venueShowsList:
-        if (i.Show != None):
-            if (i.Show.start_time > dateTimeNow):
+    dateTimeNow = datetime.now()
+
+    for sh in venueAndShowsList:
+        if (sh.Show != None):
+            if (sh.Show.start_time > dateTimeNow):
                 venue.upcoming_shows_count += 1
-                venue.upcoming_shows.append(i.Show)
+                venue.upcoming_shows.append(sh.Show)
             else:
                 venue.past_shows_count += 1
-                venue.past_shows.append(i.Show)
+                venue.past_shows.append(sh.Show)
 
     # data = list(filter(lambda d: d['id'] == venue_id, [data1, data2, data3]))[0]
     # data = Venue.query.get(venue_id)
@@ -210,16 +213,26 @@ def create_venue_form():
 def create_venue_submission():
     # TODO: insert form data as a new Venue record in the db, instead
     # TODO: modify data to be the data object returned from db insertion
+    # done
     form = VenueForm(request.form)
     if not form.validate_on_submit():
         return render_template('forms/new_venue.html', form=form)
     error = False
     body = {}
+    is_checked = False
+    if request.method == "POST":
+        is_checked = request.form.get("seeking_talent", False)
+
+        if is_checked == 'y':
+            is_checked = True
     try:
         venue = Venue(
             name=request.form['name'], city=request.form['city'], state=request.form['state'],
             image_link=request.form['image_link'],
             phone=request.form['phone'], address=request.form['address'],
+            website=request.form['website'],
+            seeking_talent=is_checked,
+            seeking_description=request.form['seeking_description'],
             # , genres=request.form['genres']
             facebook_link=request.form['facebook_link']
         )
@@ -250,6 +263,22 @@ def create_venue_submission():
 def delete_venue(venue_id):
     # TODO: Complete this endpoint for taking a venue_id, and using
     # SQLAlchemy ORM to delete a record. Handle cases where the session commit could fail.
+    error = False
+
+    try:
+        Venue.query.filter_by(id=venue_id).delete()
+
+        db.session.commit()
+
+    except:
+        error = True
+        db.session.rollback()
+
+    finally:
+        db.session.close()
+
+    if error:
+        abort(400)
 
     # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
     # clicking that button delete it from the db then redirect the user to the homepage
@@ -318,19 +347,21 @@ def show_artist(artist_id):
         "past_shows_count": 0,
         "upcoming_shows_count": 3,
     }
-    dateTimeNow = datetime.now()
 
-    venueShowsList = db.session.query(Artist, Show).outerjoin(
+    artistAndShowsList = db.session.query(Artist, Show).outerjoin(
         Show, Artist.id == Show.artist_id).filter(Artist.id == artist_id).all()
 
-    artist = venueShowsList[0].Artist
+    artist = artistAndShowsList[0].Artist
 
     artist.upcoming_shows_count = 0
-    artist.upcoming_shows = []
     artist.past_shows_count = 0
+
+    artist.upcoming_shows = []
     artist.past_shows = []
 
-    for sh in venueShowsList:
+    dateTimeNow = datetime.now()
+
+    for sh in artistAndShowsList:
         if (sh.Show != None):
             if (sh.Show.start_time > dateTimeNow):
                 artist.upcoming_shows_count += 1
@@ -372,6 +403,9 @@ def edit_artist_submission(artist_id):
     artist.image_link = form.image_link.data
     artist.genres = form.genres.data
     artist.facebook_link = form.facebook_link.data
+    artist.seeking_venue = form.seeking_venue.data
+    artist.seeking_description = form.seeking_description.data
+    artist.website = form.website.data
     try:
         db.session.add(artist)
         db.session.commit()
@@ -423,8 +457,11 @@ def edit_venue_submission(venue_id):
     venue.state = form.state.data
     venue.phone = form.phone.data
     venue.image_link = form.image_link.data
-    # venue.genres = form.genres.data
     venue.facebook_link = form.facebook_link.data
+    venue.seeking_talent = form.seeking_talent.data
+    venue.seeking_description = form.seeking_description.data
+    venue.website = form.website.data
+
     try:
         db.session.add(venue)
         db.session.commit()
@@ -457,11 +494,21 @@ def create_artist_submission():
         return render_template('forms/new_artist.html', form=form)
     error = False
     body = {}
+    is_checked = False
+    if request.method == "POST":
+        is_checked = request.form.get("seeking_venue", False)
+
+        if is_checked == 'y':
+            is_checked = True
     try:
         artist = Artist(
             name=request.form['name'], city=request.form['city'], state=request.form['state'],
             image_link=request.form['image_link'],
             phone=request.form['phone'], genres=request.form['genres'],
+            website=request.form['website'],
+            seeking_venue=is_checked,
+            # seeking_venue=str(form.checkbox.data),
+            seeking_description=request.form['seeking_description'],
             facebook_link=request.form['facebook_link']
         )
 
